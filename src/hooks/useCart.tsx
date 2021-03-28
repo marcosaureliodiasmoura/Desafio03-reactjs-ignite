@@ -120,28 +120,28 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
   };
 
   const updateProductAmount = async ({
-    productId,
+    productId, //Aqui eu recebi o id do produto do carrinho + a quantidade desejada
     amount,
   }: UpdateProductAmount) => {
     try {
-      if(amount <=0){ //Se a quantidade do produto for menor ou igual a zero dou um return
+      if(amount <=0){ //Se a quantidade do produto for menor ou igual a zero dou um return sem nada como resposta.
         return;
       }
       const stock = await api.get(`/stock/${productId}`);
-      const stockAmount = stock.data.amount;
+      const stockAmount = stock.data.amount; //Isso é a quantidade daquele produto no estoque, a loja só tem 3 do id 1, ex.
 
-      if(amount > stockAmount){
+      if(amount > stockAmount){ // A quantidade do produto solicitado é maior do que se existe no estoque da loja?
         toast.error('Quantidade solicitada fora de estoque');
         return;
       }
 
       const updatedCart = [...cart]; 
-      const productExists = updatedCart.find(product => product.id === productId);
+      const productExists = updatedCart.find(product => product.id === productId); //verifica se existe o produto da loja no carrinho.
 
       if(productExists){
-        productExists.amount = amount;
-        setCart(updatedCart);
-        localStorage.setItem('@RocketShoes:cart', JSON.stringify(updatedCart)); //Salvando no localstorage
+        productExists.amount = amount; //Vai atualizar com a quantidade solicitada na hora do clique.
+        setCart(updatedCart); //Salva a "cópia" no estado oficial.
+        localStorage.setItem('@RocketShoes:cart', JSON.stringify(updatedCart)); //Salva no localstorage
       }
       else{
         throw Error();
@@ -152,15 +152,15 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
   };
 
   return (
-    <CartContext.Provider
-      value={{ cart, addProduct, removeProduct, updateProductAmount }}
+    <CartContext.Provider //Responsável por oferecer acesso a toda aplicação, App.tsx
+      value={{ cart, addProduct, removeProduct, updateProductAmount }} //Funcionalidades a serem acessadas
     >
       {children}
     </CartContext.Provider>
   );
 }
 
-export function useCart(): CartContextData {
+export function useCart(): CartContextData { //Responsável por oferecer acesso as funções nos componentes
   const context = useContext(CartContext);
 
   return context;
