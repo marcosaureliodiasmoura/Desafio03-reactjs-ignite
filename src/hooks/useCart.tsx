@@ -13,72 +13,104 @@ interface UpdateProductAmount {
   amount: number;
 }
 
+// Nesse contexto (CartContextData), eu tenho 4 atributos:
+// 1- O cart como um array de produtos.
+// 2- O addProduct como uma função que também recebe um id de produto e retorna uma Promise.
+// 3- O removeProduct como função que recebe o id do produto e não retorna nada.
+// 4- O updateProductAmount: ele recebe o id do produto e quantidade e não retorna nada.
+
 interface CartContextData {
-  cart: Product[];
-  addProduct: (productId: number) => Promise<void>;
+  cart: Product[]; //Carrinho de compras contém um array de produtos
+  addProduct: (productId: number) => Promise<void>; //Promise: Porque faz um post?
   removeProduct: (productId: number) => void;
   updateProductAmount: ({ productId, amount }: UpdateProductAmount) => void;
 }
 
 const CartContext = createContext<CartContextData>({} as CartContextData);
 
+//Para que toda aplicação tenha acesso ao hook, CartProvider deve ser criado e colocado no App.tsx
 export function CartProvider({ children }: CartProviderProps): JSX.Element {
-  const [cart, setCart] = useState<Product[]>(() => {
+    //Executa em toda aplicação
 
+    // O cart é um estado do tipo Array de produtos 
+    // O <Product> vem do arquivo types que contém a interface do Produto com os seus
+    // atributos id, title, price, image
+    const [cart, setCart] = useState<Product[]>(() => { 
+
+    // Criei essa variavel storagedCart para buscar os dados do meu localStorage.
+    // storageCart só pode retornar String ou null, passe o mouse por cima dela.
     const storagedCart = localStorage.getItem('@RocketShoes:cart');
 
+    // Se existir alguma informação, irá retornar String, porém, 
+    // nosso carrinho é um array de produtos, tenho que converter com JSON.parse
     if (storagedCart) {
-      return JSON.parse(storagedCart);
+      return JSON.parse(storagedCart); //Retorna pro formato de array de produtos <Product[]>
     }
 
     return [];
   });
 
   const addProduct = async (productId: number) => {
+    //Para que possamos mostrar uma msg de erro, vamos utilizar o try/catch
     try {
-    const updatedCart = [...cart]; //cria imutabilidade para verificar produtos no carrinho
+      // Cria a variavel updatedCart para receber os dados do estado do carrinho.
+    const updatedCart = [...cart]; //imutabilidade para evitar afetar os dados do estado principal que oferece informações a todas as funções do projeto.
 
-    const productExists = updatedCart.find(product => product.id === productId); //existe produto no carrinho?
+    // Existe produto no carrinho? 
+    // Vou chamar de product e verificar se o product.id é igual ao argumento da função productID
+    // productId: id que irei receber na minha função
+    // Faz um comparativo se existe o produto id
+    const productExists = updatedCart.find(product => product.id === productId); 
+    // console.log(productExists)
 
-    const stock = await api.get(`/stock/${productId}`); //variável para verificar o estoque
 
-    const stockAmount = stock.data.amount; //Só para pegar o valor
-    const currentAmount = productExists ? productExists.amount : 0; //Existe produto no carrinho? pegue o amount senão é 0
-    const amount = currentAmount +1; //Quantidade desejada -> atual + 1
+    //Vai buscar informações do produto no estoque
+    // ex: loja -> id: 1, amount: 3, id: 5, amount:10
+    const stock = await api.get(`/stock/${productId}`);
 
-    if(amount > stockAmount){ //Quantidade deseja for maior que o estoque que possuo, erro de msg.
-      toast.error('Quantidade solicitada fora do estoque');
+    const stockAmount = stock.data.amount; //Pega o valor do produto no estoque da loja.
+    const currentAmount = productExists ? productExists.amount : 0; //Esse produto existe no carrinho? se for um novo produto será 0
+    const amount = currentAmount +1; //Quantidade atual +1 //Após a checagem do produto no carrinho, se for 0 vai para 1 se for 5 vai para 6, +1
+
+    if(amount > stockAmount){ //Se a quantidade deseja que passei for maior que o estoque da loja, erro de msg.
+      toast.error('Quantidade solicitada fora de estoque');
       return;
     }
 
-    if(productExists ){ //O produto existe? atualiza a quantidade
-      productExists.amount = amount;
-    } else{ //senão existir o produto, adiciona um novo produto que não existe no carrinho
+    if(productExists){ //O produto da loja existe no carrinho do usuário?
+      productExists.amount = amount; // atualiza a quantidade do produto no carrinho -> productExist é o updatedCart, devido a imutabilidade podemos alterar os dados sem prejudicar o estado atual do cart
+    } else{ //senão existir o produto no carrinho
+      // Faz um get no id do produto buscando suas informações.
       const product = await api.get(`/products/${productId}`);  //busca as infor do produto selecionado
 
-      const newProduct = { //Pega os dados do produto e adiciona a quantidade 1 minima
+      //Cria a váriavel novoProduto, recebendo os dados do produto + a quantidade inicial
+      const newProduct = { //Isso será armazenado no carrinho do usuário.
         ...product.data,
         amount: 1
       }
-      updatedCart.push(newProduct); //Joga o produto no updateCart junto com a imutabilidade
+      updatedCart.push(newProduct); //Joga o Novo Produto no updateCart(carrinho de compras), utiliza o push para respeitar a imutabilidade, ou seja, os dados anteriores + o produtoNovo
     }
 
-    setCart(updatedCart); //Adiciona o produto ao estado do carrinho
-    localStorage.setItem('@RocketShoes:cart', JSON.stringify(updatedCart)); //Adiciona também no localstorage
+    setCart(updatedCart); //Salva no estado o updatedCart atual que é o valor anterior + o novo produto
+    localStorage.setItem('@RocketShoes:cart', JSON.stringify(updatedCart)); //Adiciona também no localstorage para String
     } catch {
-      toast.error('Erro na edição do produto');
+      toast.error('Erro na adição do produto');
     }
   };
 
   const removeProduct = (productId: number) => {
-    try { //Verifique se existe no carrinho o produto a ser removido
-      const updatedCart = [...cart]; //imutabilidade
-      const productIndex = updatedCart.findIndex(product => product.id === product.id); //findIndex permite remover o item do array
+    try { //try para tratar erros
+      const updatedCart = [...cart]; //imutabilidade para gerar uma "cópia" do carrinho de compras
+
+      //Faz uma varredura para identificar se existe o produto, neste caso, o findIndex permite remover o produto(item) do array de produtos.
+      const productIndex = updatedCart.findIndex(product => product.id === productId);
    
-      if(productIndex >= 0){ //se encontrou o productIndex é maior igual a 0, senão encontrar retorna -1. 
-        updatedCart.splice(productIndex, 1); //o splice vai alterar o updateCart "remover", por isso, é ideal utilizar a imutabilidade
-        setCart(updatedCart); //Adicionando no estado do Cart
-        localStorage.setItem('@RocketShoes:cart', JSON.stringify(updatedCart)); //Salvando no localstorage
+      if(productIndex >= 0){ // O productIndex precisa ser maior igual a 0, senão encontrar este produto retorna -1. 
+        
+        //o splice vai alterar o updateCart "remover", por isso, é ideal utilizar a imutabilidade
+        updatedCart.splice(productIndex, 1);
+        setCart(updatedCart); //Adiciona a "imutabilidade-cópia" no carrinho de compras.
+        localStorage.setItem('@RocketShoes:cart', JSON.stringify(updatedCart)); //Salva no localstorage
       } else{
         throw Error(); //Força o erro do catch
       }

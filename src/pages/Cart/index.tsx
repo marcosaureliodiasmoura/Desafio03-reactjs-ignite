@@ -18,7 +18,7 @@ interface Product {
 }
 
 const Cart = (): JSX.Element => {
-  const { cart, removeProduct, updateProductAmount } = useCart();
+  const { cart, removeProduct, updateProductAmount } = useCart(); //Contextos que irei utilizar aqui.
 
   const cartFormatted = cart.map(product => ({
     ...product,

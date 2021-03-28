@@ -22,33 +22,40 @@ interface CartItemsAmount {
 }
 
 const Home = (): JSX.Element => {
-  const [products, setProducts] = useState<ProductFormatted[]>([]);
-  const { addProduct, cart } = useCart(); //lista de produtos e não dos produtos do carrinho
+  const [products, setProducts] = useState<ProductFormatted[]>([]); //Terei o formato do produto do carrinho e também o preço formatado.
+  const { addProduct, cart } = useCart(); //Contextos que irei pegar do hooks
 
   const cartItemsAmount = cart.reduce((sumAmount, product) => {
-    const newSumAmount = {...sumAmount}; //Criei um novo objeto a partir do anterior
-    newSumAmount[product.id ] = product.amount;
+    const newSumAmount = {...sumAmount}; //Criei um novo objeto a partir do anterior "imutabilidade"
 
+    //Passa o objeto "newSumAmount" e acessa o seu id, acessa a chave de uma maneira dinâmica
+    //Faz uma associação de todos os itens dentro do carrinho
+    //ex: sapato azul(id:1) tem 2 no carrinho; sapato preto(id:3) tem 1 no carrinho
+    newSumAmount[product.id ] = product.amount; 
+    // console.log(newSumAmount);
+    // ex do resultado: {1:2, 3:1}
     return newSumAmount;
   }, {} as CartItemsAmount)
 
   useEffect(() => {
-    async function loadProducts() {
-       const response  = await api.get<Product[]>('products');
+    async function loadProducts() { //Carrega os produtos da loja para mostrar na tela
+       const response  = await api.get<Product[]>('products'); //trás o price do json assim -> 139.9,
 
-       const data = response.data.map(product => ({
-         ...product,
-         priceFormatted: formatPrice(product.price)
+       const data = response.data.map(product => ({ //faz o mapeamento, o product precisa da tipagem no response <Product[]>
+         ...product, //pega todos os produdos da api
+         priceFormatted: formatPrice(product.price) //transforma o formato do preço
        }))      
 
-       setProducts(data);
+       setProducts(data); //Adiciona todos os produtos no estado junto com a nova formatação em R$.
     }
 
     loadProducts();
   }, []);
+      console.log(products); //Consigo enxergar o valor formatado que será apresentando na view
+
 
   function handleAddProduct(id: number) {
-    addProduct(id); //Chama a função do hook e passa o id
+    addProduct(id); //Chama a função do hook e passa o id para ela, executando a regra de negócio do addProduct do hook.
   }
 
   return (
